@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KML to JOB Converter</title>
+</head>
+<body>
+  <h1>KML to JOB Converter</h1>
+
+  <label for="jobId">Job ID:</label>
+  <input type="text" id="jobId" placeholder="Enter Job ID" />
+  <br><br>
+
+  <input type="file" id="kmlFile" accept=".kml" />
+  <button onclick="convertKMLtoJOB()">Convert</button>
+
+  <pre id="output" style="white-space: pre-wrap; margin-top: 1em;"></pre>
+
+  <script>
+    function convertKMLtoJOB() {
+      const jobId = document.getElementById("jobId").value.trim();
+      if (!jobId) {
+        alert("Please enter a Job ID.");
+        return;
+      }
+
+      const fileInput = document.getElementById("kmlFile");
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert("Please select a KML file.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(e.target.result, "text/xml");
+
+        let output = `.JOB ${jobId} ${jobId}\n.VERSION 1\n`;
+
+        const polygons = xml.getElementsByTagName("Polygon");
+        let polyNumber = 1;
+
+        for (let polygon of polygons) {
+          const coords = polygon.getElementsByTagName("coordinates")[0];
+          if (!coords) continue;
+
+          const coordText = coords.textContent.trim();
+          const coordLines = coordText.split(/\s+/);
+
+          output += `.POL ${polyNumber} #${polyNumber}\n\tINC\n`;
+          coordLines.forEach(line => {
+            const [lon, lat] = line.trim().split(",");
+            if (lat && lon) {
+              output += `\t${lat} ${lon}\n`;
+            }
+          });
+
+          polyNumber++;
+        }
+
+        const outputContainer = document.getElementById("output");
+        outputContainer.textContent = output;
+
+        const blob = new Blob([output], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${jobId}.job`; // Use the Job ID for the filename
+        link.textContent = `⬇️ Download ${jobId}.job File`;
+        link.style.display = "block";
+
+        outputContainer.appendChild(document.createElement("br"));
+        outputContainer.appendChild(link);
+      };
+
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>
